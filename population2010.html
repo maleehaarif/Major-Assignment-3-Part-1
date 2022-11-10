@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./libs/d3.js"></script>
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+    <title>Major Assignment3 - part1</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        h1, h3 {
+            text-align: center;
+        }
+
+        svg {
+            width: 70vw;
+            height: 70vh;
+            background-color: #f5f5f5;
+            margin: auto;
+            display: block;
+            border: black;
+        }
+
+        #tooltip {
+            position: absolute;
+            opacity: 0;
+            top: 0;
+            left: 0;
+            width: auto;
+            padding: 10px;
+            background: white;
+            font-family: sans-serif;
+            font-size: medium;
+            border-radius: 2px;
+            line-height: 1;
+        }
+        
+        path {
+            stroke-width: .5px;
+            stroke: black
+        }
+        
+        path:hover {
+            opacity: .6;
+            stroke: black;
+            stroke-width: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Population in Towns of Massachusetts in 2010</h1>
+    <h3>Maleeha Arif</h3>
+
+    <div id="tooltip"></div>
+    <script>
+
+        // dimension of the page
+        const window_dims = {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+        const margin = window_dims.width * .2
+        const MA_counties = "./data/towns.topojson"
+
+        Promise.all([
+            d3.json(MA_counties)
+        ]).then(data => {
+            // topology data
+            const topo_data = data[0];
+
+          
+            const geojson = topojson.feature(topo_data, topo_data.objects.ma);
+            console.log(geojson)
+           
+            const projections = [
+                d3.geoAzimuthalEqualArea(), 
+                d3.geoAlbersUsa(), 
+                d3.geoAlbers(), 
+                d3.geoMercator(), 
+                d3.geoNaturalEarth1(), 
+                d3.geoEqualEarth(), 
+                d3.geoConicEqualArea(),
+                d3.geoEquirectangular(),
+                d3.geoOrthographic()
+            ]
+
+            const geoPath_generator = d3.geoPath()
+                .projection(projections[3].fitSize([window_dims.width - margin, window_dims.height - margin], geojson))
+
+           
+            var colorInterpolator = d3.interpolateRgbBasis(["green", "purple", "red"])
+            let logScale = d3.scaleLog()
+                .domain(d3.extent(geojson.features, (d) => {
+                    return d['properties']['POP2010']
+                }))
+
+            let linearScale = d3.scaleLinear()
+                .domain(d3.extent(geojson.features, (d) => {
+                    return d['properties']['POP2010']
+                }))
+
+            const tooltip = d3.select("#tooltip");
+
+        
+            let svg = d3.select("body").append("svg")
+                .attr("width", "100vw")
+                .attr("height", "100vh");
+
+            svg.selectAll("path")
+                .data(geojson.features)
+                .enter()
+                .append("path")
+                .attr("d", d => geoPath_generator(d))
+                .attr("fill", d => colorInterpolator(logScale(d['properties']['POP2010'])))
+                .on("mouseenter", (m, d) => {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9)
+                    tooltip.html("TOWN: " + d['properties']['TOWN'] +
+                        "<br>" + "POPULATION: " + d['properties']['POP2010'])
+                        .style("left", m.clientX + "px")
+                        .style("top", m.clientY + "px");
+                })
+                .on("mousemove", (m, d) => {
+                    tooltip.style("opacity", .9)
+                })
+                .on("mouseout", (m, d) => {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", 0)
+                })
+        })
+    </script>
+</body>
+
+</html>
